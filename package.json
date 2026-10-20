@@ -1,0 +1,36 @@
+{
+  "name": "@lemakpay/client",
+  "version": "0.1.0",
+  "description": "The TypeScript client of the Lemak merchant API. Zero runtime dependencies.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "generate": "openapi-typescript https://lemak.cash/docs/openapi.yaml -o src/spec.ts",
+    "build": "tsc",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "tsc && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "6.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lemakpay/client-typescript.git"
+  },
+  "license": "MIT"
+}
