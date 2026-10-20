@@ -19,6 +19,8 @@ export interface paths {
         /**
          * Create a payment intent
          * @description Creates a payment intent. Without `payment_method`, the payment intent stays `created` and the response includes `checkout_url`, a hosted page where the payer chooses how to pay. With `payment_method`, the order is placed with a payment channel at once, and the payment intent is returned in `requires_payment` with a `next_action`. If no channel can take the payment, the request fails with 402 `no_channel_available`.
+         *
+         *     To charge the payer in another currency, set `payment_currency`. You price the payment in `amount` and `currency`, which must be your settlement currency, and the payer pays the converted amount in `payment_currency`. The exchange rate is always locked when the payment intent is created, whatever your lock point setting, and it holds until the payment intent expires. `markup_bearer` chooses who pays the conversion markup.
          */
         post: operations["createPaymentIntent"];
         delete?: never;
@@ -240,7 +242,7 @@ export interface paths {
         };
         /**
          * Get an FX quote
-         * @description Returns the current exchange rate from `from` to `to`, spread included, and the estimated amount after conversion. The quote is indicative and locks no rate. The rate a payment uses is locked at the lock point set for your account.
+         * @description Returns the current exchange rate from `from` to `to`, markup included, and the estimated amount after conversion. The quote is indicative and locks no rate. The rate a payment uses is locked at the lock point set for your account.
          */
         get: operations["fxQuote"];
         put?: never;
@@ -332,10 +334,21 @@ export interface components {
         PaymentIntentCreate: {
             /**
              * Format: int64
-             * @description The amount to collect, in the smallest currency unit.
+             * @description The amount to collect, in the smallest currency unit. With `payment_currency`, the price of the order in `currency`, which must then be your settlement currency, or the request fails with 400 `unsupported_pricing_currency`.
              */
             amount: number;
             currency: components["schemas"]["Currency"];
+            /** @description The currency the payer pays in, when it differs from `currency`. The amount is converted automatically and returned in `payment_amount`. The rate is locked at creation and holds until the payment intent expires. Requires `payment_method`; a crypto method returns 400 `conversion_unsupported`. When no rate is available, the request fails with 400 `rate_unavailable`. */
+            payment_currency?: components["schemas"]["Currency"];
+            /**
+             * @description Who pays the conversion markup when `payment_currency` is set. Defaults to `payer`.
+             *
+             *     `payer`: the payer pays the conversion and your fee, so you receive exactly `amount`. The payment amount is `amount` at the applied rate (`fx.rate`), grossed up by your fee rate and fixed fee, and rounded up to the payment currency's smallest unit.
+             *
+             *     `merchant`: the payer pays `amount` converted at the market rate without markup, rounded up. You receive the payment amount less your fee, converted at the applied rate (`fx.rate`) and rounded down.
+             * @enum {string}
+             */
+            markup_bearer?: "payer" | "merchant";
             /** @description Your ID for the order. It must be unique across all payment intents in your account. */
             merchant_order_id: string;
             /** @description The payment method code. When set, the order is placed with a payment channel at once. When omitted, the payer chooses a method on the hosted checkout page. For a crypto method such as `tron` or `base`, `currency` is the token, `USDT` or `USDC`, and the default expiry is 30 minutes. */
@@ -431,10 +444,17 @@ export interface components {
             mode: "live" | "test";
             /**
              * Format: int64
-             * @description The amount to collect, in the smallest currency unit.
+             * @description The amount to collect, in the smallest currency unit. With automatic conversion, the price you set, and the payer pays `payment_amount`.
              */
             amount: number;
             currency: components["schemas"]["Currency"];
+            /** @description What the payer pays. Present only with automatic conversion. The fee is charged on this amount. */
+            payment_amount?: components["schemas"]["Money"];
+            /**
+             * @description Who pays the conversion markup. Present only with automatic conversion.
+             * @enum {string}
+             */
+            markup_bearer?: "payer" | "merchant";
             /** @description Your ID for the order. */
             merchant_order_id: string;
             status: components["schemas"]["PaymentIntentStatus"];
@@ -599,11 +619,11 @@ export interface components {
             /** @description Whether a rate is locked. */
             locked: boolean;
             /**
-             * @description When the rate is locked: when the payment intent is created, when it is paid, or when the channel settles it.
+             * @description When the rate is locked: when the payment intent is created, when it is paid, or when the channel settles it. A payment intent with automatic conversion is always `on_create`.
              * @enum {string}
              */
             lock_point?: "on_create" | "on_paid" | "on_channel_settled";
-            /** @description The locked rate, as a decimal string. */
+            /** @description The applied rate, as a decimal string: units of the payment currency for one unit of `quote_currency`, markup included. */
             rate?: string;
             quote_currency?: components["schemas"]["Currency"];
             /**
@@ -706,7 +726,7 @@ export interface components {
             indicative: true;
             from: components["schemas"]["Currency"];
             to: components["schemas"]["Currency"];
-            /** @description The effective rate, the mid-market rate plus the spread, as a decimal string. */
+            /** @description The rate that applies, markup included, as a decimal string. */
             rate: string;
             estimated?: components["schemas"]["Money"];
         };

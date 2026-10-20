@@ -12,7 +12,7 @@ Node.js 20.3 or later.
 ## Installation
 
 ```sh
-npm install github:lemakpay/client-typescript#v0.1.0
+npm install github:lemakpay/client-typescript#v0.2.0
 ```
 
 ## Usage
@@ -29,6 +29,36 @@ const paymentIntent = await lemak.createPaymentIntent({
   payment_method: "promptpay",
 });
 ```
+
+### Automatic currency conversion
+
+To price an order in your settlement currency and let the payer pay in theirs, set
+`payment_currency`:
+
+```ts
+const pi = await lemak.createPaymentIntent({
+  amount: 1000, // 10.00 USD, your price
+  currency: "USD",
+  payment_currency: "THB",
+  markup_bearer: "payer",
+  merchant_order_id: "order-1002",
+  payment_method: "promptpay",
+});
+// pi.payment_amount is what the payer pays, in THB.
+```
+
+The payer pays in another currency and you are paid in yours. The exchange rate is always locked
+when the payment intent is created, whatever your lock point setting, and it holds until the
+payment intent expires. `currency` must be your settlement currency, and `payment_method` is
+required. The response keeps your price in `amount` and `currency`; the payer's side is in
+`payment_amount`, and the applied rate, markup included, is in `fx.rate`.
+
+`markup_bearer` decides who pays the conversion markup and your fee:
+
+- `payer` (the default): the payer pays them, so you receive exactly `amount`. The payment
+  amount is rounded up to the payment currency's smallest unit.
+- `merchant`: the payer pays `amount` converted without markup, rounded up. You receive the
+  payment amount less your fee, converted at `fx.rate` and rounded down.
 
 List methods return an async iterator that fetches pages as needed:
 
