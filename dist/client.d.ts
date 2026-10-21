@@ -14,6 +14,11 @@ export type Settlement = Schemas["Settlement"];
 export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
+export type PaymentMethod = Schemas["PaymentMethod"];
+export type PaymentMethodList = Schemas["PaymentMethodList"];
+export type CurrencyDetails = Schemas["CurrencyDetails"];
+export type CurrencyList = Schemas["CurrencyList"];
+export type ListPaymentMethodsQuery = NonNullable<operations["listPaymentMethods"]["parameters"]["query"]>;
 export type Event = Schemas["Event"];
 export type WebhookPublicKeyList = Schemas["WebhookPublicKeyList"];
 export type Money = Schemas["Money"];
@@ -107,6 +112,10 @@ export declare class Client {
     balance(opts?: RequestOptions): Promise<Balance>;
     /** An indicative rate. The rate a payment uses is fixed at its lock point. */
     fxQuote(query: FxQuoteQuery, opts?: RequestOptions): Promise<FxQuote>;
+    /** The payment methods the key's mode can use, each with the currencies it serves. */
+    listPaymentMethods(query?: ListPaymentMethodsQuery, opts?: RequestOptions): Promise<PaymentMethodList>;
+    /** The currencies you can charge in, quote and settle in, with their exponents. */
+    listCurrencies(opts?: RequestOptions): Promise<CurrencyList>;
     /** The events behind the webhook deliveries, newest first, fetched page by page. */
     events(query?: EventsQuery, opts?: RequestOptions): AsyncGenerator<Event>;
     /** The platform keys the v2 webhook signature verifies against. */

@@ -124,6 +124,14 @@ export class Client {
     fxQuote(query, opts) {
         return this.#request("GET", "/v1/fx/quotes", query, undefined, opts);
     }
+    /** The payment methods the key's mode can use, each with the currencies it serves. */
+    listPaymentMethods(query, opts) {
+        return this.#request("GET", "/v1/payment_methods", query, undefined, opts);
+    }
+    /** The currencies you can charge in, quote and settle in, with their exponents. */
+    listCurrencies(opts) {
+        return this.#request("GET", "/v1/currencies", undefined, undefined, opts);
+    }
     /** The events behind the webhook deliveries, newest first, fetched page by page. */
     events(query, opts) {
         return this.#pages("/v1/events", query, opts);

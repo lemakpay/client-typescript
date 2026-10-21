@@ -8,6 +8,11 @@
       "path": "/v1/balance"
     },
     {
+      "operation": "listCurrencies",
+      "method": "GET",
+      "path": "/v1/currencies"
+    },
+    {
       "operation": "listDisputes",
       "method": "GET",
       "path": "/v1/disputes"
@@ -61,6 +66,11 @@
       "operation": "cancelPaymentIntent",
       "method": "POST",
       "path": "/v1/payment_intents/{id}/cancel"
+    },
+    {
+      "operation": "listPaymentMethods",
+      "method": "GET",
+      "path": "/v1/payment_methods"
     },
     {
       "operation": "listSettlements",

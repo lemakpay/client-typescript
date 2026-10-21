@@ -277,6 +277,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payment_methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List payment methods
+         * @description Returns the payment methods you can use in the mode of the API key, each with the currencies it serves. A method is listed when an active payment channel can take it today. An order can still be refused for its amount, a daily limit or maintenance. A test key lists every method a production channel offers for the currency, so you can integrate a method before it is enabled.
+         */
+        get: operations["listPaymentMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/currencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List currencies
+         * @description Returns the currencies you can charge in, in the mode of the API key, and the currencies you can get an FX quote for, each with its exponent.
+         */
+        get: operations["listCurrencies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events": {
         parameters: {
             query?: never;
@@ -787,6 +827,51 @@ export interface components {
             /** @description The rate that applies, markup included, as a decimal string. */
             rate: string;
             estimated?: components["schemas"]["Money"];
+        };
+        /** @description A payment method you can use, and the currencies it serves. */
+        PaymentMethod: {
+            /** @constant */
+            object: "payment_method";
+            /** @description The code you send as `payment_method`. */
+            code: string;
+            /** @description The name of the method by language tag, such as `en`, `zh-Hant` or `zh-Hans`. `en` is always present. */
+            names: {
+                [key: string]: string;
+            };
+            /** @description The kind of method, such as `qr`, `wallet`, `bank`, `card` or `crypto`. */
+            kind: string;
+            /** @description An icon for the method, when one is set. */
+            icon_url?: string;
+            /** @description The currencies the method serves, in alphabetical order. */
+            currencies: components["schemas"]["Currency"][];
+        };
+        PaymentMethodList: {
+            /** @constant */
+            object: "list";
+            /** @description Always `false`. */
+            has_more: boolean;
+            data: components["schemas"]["PaymentMethod"][];
+        };
+        /** @description A currency you can charge in, get a quote for, or settle in. */
+        CurrencyDetails: {
+            /** @constant */
+            object: "currency";
+            code: components["schemas"]["Currency"];
+            /** @description The number of decimal places of the smallest unit. An amount of `1000` is 10.00 at exponent 2 and 1000 at exponent 0. */
+            exponent: number;
+            /** @description Whether a payment method serves it, so you can create a payment intent in it. */
+            chargeable: boolean;
+            /** @description Whether GET /v1/fx/quotes prices it against the settlement currency, so a payer can pay in it when you price in the settlement currency. */
+            quotable: boolean;
+            /** @description Whether it is the settlement currency, which is the one you price in for automatic conversion. */
+            settlement: boolean;
+        };
+        CurrencyList: {
+            /** @constant */
+            object: "list";
+            /** @description Always `false`. */
+            has_more: boolean;
+            data: components["schemas"]["CurrencyDetails"][];
         };
     };
     responses: {
@@ -1365,6 +1450,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FxQuote"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listPaymentMethods: {
+        parameters: {
+            query?: {
+                /** @description List only the methods that serve this currency. */
+                currency?: components["schemas"]["Currency"];
+            };
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every payment method you can use. The list is never paged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodList"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listCurrencies: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every currency you can charge in or quote. The list is never paged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrencyList"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
