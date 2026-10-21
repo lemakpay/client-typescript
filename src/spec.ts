@@ -1105,7 +1105,6 @@ export interface operations {
                 "application/json": {
                     /** @description The payment method code. Required if the payment intent has no order yet. Without it, the request returns 400 `payment_method_required`. */
                     payment_method: string;
-                    channel?: string;
                 };
             };
         };
