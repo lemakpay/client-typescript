@@ -444,7 +444,7 @@ export interface components {
             phone?: string;
             /** @description The payer's email address. */
             email?: string;
-            /** @description Two-letter ISO 3166-1 country code. */
+            /** @description Two-letter ISO 3166-1 country code. When set, routing keeps to payment methods of this country and to methods tied to no country, such as crypto. The hosted checkout page offers only those. */
             country?: string;
             /** @description The payer's bank, as one of the bank codes the payment method supports. */
             bank_code?: string;
