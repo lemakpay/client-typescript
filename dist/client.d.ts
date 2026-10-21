@@ -85,7 +85,11 @@ export declare class Client {
     createPaymentAttempt(id: string, body: PaymentAttemptCreate, opts?: RequestOptions): Promise<PaymentAttempt>;
     /** Every attempt on one intent, oldest first. The list has no cursor. */
     listPaymentAttempts(id: string, opts?: RequestOptions): Promise<PaymentAttemptList>;
-    /** Test mode only: report an outcome for the intent. */
+    /**
+     * Test mode only: report an outcome for the intent. An intent with no pending attempt
+     * fails with 409 `no_pending_attempt`: call `createPaymentAttempt`, or let the payer pick
+     * a method on the hosted page, first.
+     */
     simulatePaymentIntent(id: string, body: PaymentIntentSimulate, opts?: RequestOptions): Promise<PaymentIntent>;
     /** Test mode only: move one timer of the intent to now. */
     advancePaymentIntent(id: string, body: PaymentIntentAdvance, opts?: RequestOptions): Promise<PaymentIntent>;

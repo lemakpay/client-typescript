@@ -104,7 +104,7 @@ export interface paths {
         put?: never;
         /**
          * Simulate a channel outcome
-         * @description Test mode only. Makes the payment channel report an outcome for this payment intent, and processes the resulting notification as it would be processed in production. A production key returns 400 `test_mode_required`, and a channel that cannot simulate outcomes returns 400 `simulation_unsupported`. Reusing an `Idempotency-Key` on another payment intent returns 422 `idempotency_key_reused`.
+         * @description Test mode only. Makes the payment channel report an outcome for this payment intent, and processes the resulting notification as it would be processed in production. A production key returns 400 `test_mode_required`, and a channel that cannot simulate outcomes returns 400 `simulation_unsupported`. A payment intent with no pending attempt returns 409 `no_pending_attempt`: start one with POST /v1/payment_intents/{id}/attempts and a `payment_method`, or pick a method on the hosted page, first. Reusing an `Idempotency-Key` on another payment intent returns 422 `idempotency_key_reused`.
          */
         post: operations["simulatePaymentIntent"];
         delete?: never;

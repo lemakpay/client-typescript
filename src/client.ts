@@ -149,7 +149,11 @@ export class Client {
     return this.#request("GET", `/v1/payment_intents/${encodeURIComponent(id)}/attempts`, undefined, undefined, opts);
   }
 
-  /** Test mode only: report an outcome for the intent. */
+  /**
+   * Test mode only: report an outcome for the intent. An intent with no pending attempt
+   * fails with 409 `no_pending_attempt`: call `createPaymentAttempt`, or let the payer pick
+   * a method on the hosted page, first.
+   */
   simulatePaymentIntent(id: string, body: PaymentIntentSimulate, opts?: RequestOptions): Promise<PaymentIntent> {
     return this.#request("POST", `/v1/test/payment_intents/${encodeURIComponent(id)}/simulate`, undefined, body, opts);
   }
