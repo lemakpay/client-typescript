@@ -49,7 +49,7 @@ test("every merchant route of the spec has a method, and the method reaches that
     submitDisputeEvidence: ["dp_A", {}],
     fxQuote: [{ from: "THB", to: "USD" }],
   };
-  const ids = { paymentIntent: "pi_A", cancelPaymentIntent: "pi_A", listPaymentAttempts: "pi_A", dispute: "dp_A" };
+  const ids = { paymentIntent: "pi_A", cancelPaymentIntent: "pi_A", listPaymentAttempts: "pi_A", dispute: "dp_A", settlement: "st_A" };
   const methods = new Set(Object.getOwnPropertyNames(Client.prototype).filter((m) => m !== "constructor"));
   for (const r of v.routes) {
     assert.equal(typeof c[r.operation], "function", `no method calls ${r.method} ${r.path}`);

@@ -63,9 +63,19 @@
       "path": "/v1/payment_intents/{id}/cancel"
     },
     {
+      "operation": "listSettlements",
+      "method": "GET",
+      "path": "/v1/settlements"
+    },
+    {
       "operation": "createSettlement",
       "method": "POST",
       "path": "/v1/settlements"
+    },
+    {
+      "operation": "settlement",
+      "method": "GET",
+      "path": "/v1/settlements/{id}"
     },
     {
       "operation": "advancePaymentIntent",

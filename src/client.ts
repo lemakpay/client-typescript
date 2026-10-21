@@ -13,6 +13,7 @@ export type PaymentAttemptCreate = NonNullable<operations["createPaymentAttempt"
 export type Dispute = Schemas["Dispute"];
 export type DisputeEvidence = Schemas["DisputeEvidence"];
 export type Settlement = Schemas["Settlement"];
+export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
 export type Event = Schemas["Event"];
@@ -21,7 +22,8 @@ export type Money = Schemas["Money"];
 export type ErrorType = Schemas["Error"]["type"];
 export type ListPaymentIntentsQuery = NonNullable<operations["listPaymentIntents"]["parameters"]["query"]>;
 export type ListDisputesQuery = NonNullable<operations["listDisputes"]["parameters"]["query"]>;
-export type EventsQuery = NonNullable<operations["events"]["parameters"]["query"]>;
+export type ListSettlementsQuery = NonNullable<operations["listSettlements"]["parameters"]["query"]>;
+export type EventsQuery =NonNullable<operations["events"]["parameters"]["query"]>;
 export type FxQuoteQuery = operations["fxQuote"]["parameters"]["query"];
 
 /** Where a Client sends requests when baseURL is not set. */
@@ -178,6 +180,16 @@ export class Client {
   /** Requests a settlement of the available balance. Available only on a manual settlement schedule. */
   createSettlement(opts?: RequestOptions): Promise<Settlement> {
     return this.#request("POST", "/v1/settlements", undefined, undefined, opts);
+  }
+
+  /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
+  listSettlements(query?: ListSettlementsQuery, opts?: RequestOptions): AsyncGenerator<Settlement> {
+    return this.#pages("/v1/settlements", query, opts);
+  }
+
+  /** One settlement, with the payment intents it pays in `items`. */
+  settlement(id: string, opts?: RequestOptions): Promise<Settlement> {
+    return this.#request("GET", `/v1/settlements/${encodeURIComponent(id)}`, undefined, undefined, opts);
   }
 
   balance(opts?: RequestOptions): Promise<Balance> {

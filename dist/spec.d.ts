@@ -200,13 +200,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List settlements
+         * @description Returns a list of settlements in the mode of the API key, newest first. The list leaves out the items of each settlement; retrieve one settlement to read them.
+         */
+        get: operations["listSettlements"];
         put?: never;
         /**
          * Create a settlement
          * @description Pays out your available balance now. Only accounts on the `manual` settlement schedule can use this endpoint. Accounts on a `daily` or `weekly` schedule are paid automatically.
          */
         post: operations["createSettlement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settlements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve a settlement
+         * @description Retrieves a settlement by its ID, with the payment intents it pays in `items`. The item amounts add up to the settlement amount.
+         */
+        get: operations["settlement"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -389,6 +413,11 @@ export interface components {
             /** @description The payer's IP address. Some channels, such as `cashapp`, require it. Send the payer's address, not your server's. The hosted checkout page ignores this field and uses the payer's own address. */
             ip?: string;
         };
+        /**
+         * @description The kind of payout destination.
+         * @enum {string}
+         */
+        DestinationType: "usdc_onchain" | "swift" | "simulated";
         /** @description An attempt to pay a payment intent through a payment channel. A payment intent has at most one pending attempt. Failed attempts are kept. */
         PaymentAttempt: {
             /** @description Unique identifier for the attempt. */
@@ -536,6 +565,35 @@ export interface components {
              * @description The time the settlement was created.
              */
             created: string;
+            /**
+             * Format: date-time
+             * @description The time the settlement was paid. Present only when `status` is `paid`.
+             */
+            paid_at?: string;
+            destination?: components["schemas"]["SettlementDestination"];
+            /** @description The payment intents this settlement pays. Present only when you retrieve one settlement. The item amounts add up to `amount`. */
+            items?: components["schemas"]["SettlementItem"][];
+        };
+        /** @description Where the settlement is paid. Absent when the settlement names no destination. */
+        SettlementDestination: {
+            type: components["schemas"]["DestinationType"];
+            /** @description The last four characters of the destination, and nothing else. An empty string when the destination has four characters or fewer, or none. */
+            masked: string;
+        };
+        SettlementItem: {
+            /** @constant */
+            object: "settlement_item";
+            /** @description The ID of the payment intent this item pays. */
+            payment_intent: string;
+            /** @description The amount paid for this payment intent. */
+            amount: components["schemas"]["Money"];
+        };
+        SettlementList: {
+            /** @constant */
+            object: "list";
+            data: components["schemas"]["Settlement"][];
+            /** @description Whether more objects exist after this page. */
+            has_more: boolean;
         };
         PaymentIntentSimulate: {
             /**
@@ -753,6 +811,8 @@ export interface components {
         PaymentIntentID: string;
         /** @description The ID of the dispute. */
         DisputeID: string;
+        /** @description The ID of the settlement. */
+        SettlementID: string;
         /** @description The maximum number of objects to return, from 1 to 100. */
         Limit: number;
         /** @description A pagination cursor. Pass the ID of the last object on the previous page to get the next page. */
@@ -1133,6 +1193,37 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
+    listSettlements: {
+        parameters: {
+            query?: {
+                /** @description The maximum number of objects to return, from 1 to 100. */
+                limit?: components["parameters"]["Limit"];
+                /** @description A pagination cursor. Pass the ID of the last object on the previous page to get the next page. */
+                starting_after?: components["parameters"]["StartingAfter"];
+                /** @description Only return settlements with this status. Any other value returns 400 `invalid_status`. */
+                status?: components["schemas"]["SettlementStatus"];
+            };
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of settlements. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementList"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     createSettlement: {
         parameters: {
             query?: never;
@@ -1176,6 +1267,42 @@ export interface operations {
             };
             /** @description The `Idempotency-Key` was already used with a different request body (`idempotency_key_reused`). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    settlement: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path: {
+                /** @description The ID of the settlement. */
+                id: components["parameters"]["SettlementID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the settlement and its items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Settlement"];
+                };
+            };
+            /** @description No settlement with that ID exists in the mode of the API key (`resource_missing`). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

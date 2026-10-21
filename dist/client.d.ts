@@ -11,6 +11,7 @@ export type PaymentAttemptCreate = NonNullable<operations["createPaymentAttempt"
 export type Dispute = Schemas["Dispute"];
 export type DisputeEvidence = Schemas["DisputeEvidence"];
 export type Settlement = Schemas["Settlement"];
+export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
 export type Event = Schemas["Event"];
@@ -19,6 +20,7 @@ export type Money = Schemas["Money"];
 export type ErrorType = Schemas["Error"]["type"];
 export type ListPaymentIntentsQuery = NonNullable<operations["listPaymentIntents"]["parameters"]["query"]>;
 export type ListDisputesQuery = NonNullable<operations["listDisputes"]["parameters"]["query"]>;
+export type ListSettlementsQuery = NonNullable<operations["listSettlements"]["parameters"]["query"]>;
 export type EventsQuery = NonNullable<operations["events"]["parameters"]["query"]>;
 export type FxQuoteQuery = operations["fxQuote"]["parameters"]["query"];
 /** Where a Client sends requests when baseURL is not set. */
@@ -98,6 +100,10 @@ export declare class Client {
     submitDisputeEvidence(id: string, body: DisputeEvidence, opts?: RequestOptions): Promise<Dispute>;
     /** Requests a settlement of the available balance. Available only on a manual settlement schedule. */
     createSettlement(opts?: RequestOptions): Promise<Settlement>;
+    /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
+    listSettlements(query?: ListSettlementsQuery, opts?: RequestOptions): AsyncGenerator<Settlement>;
+    /** One settlement, with the payment intents it pays in `items`. */
+    settlement(id: string, opts?: RequestOptions): Promise<Settlement>;
     balance(opts?: RequestOptions): Promise<Balance>;
     /** An indicative rate. The rate a payment uses is fixed at its lock point. */
     fxQuote(query: FxQuoteQuery, opts?: RequestOptions): Promise<FxQuote>;

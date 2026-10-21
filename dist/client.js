@@ -109,6 +109,14 @@ export class Client {
     createSettlement(opts) {
         return this.#request("POST", "/v1/settlements", undefined, undefined, opts);
     }
+    /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
+    listSettlements(query, opts) {
+        return this.#pages("/v1/settlements", query, opts);
+    }
+    /** One settlement, with the payment intents it pays in `items`. */
+    settlement(id, opts) {
+        return this.#request("GET", `/v1/settlements/${encodeURIComponent(id)}`, undefined, undefined, opts);
+    }
     balance(opts) {
         return this.#request("GET", "/v1/balance", undefined, undefined, opts);
     }
