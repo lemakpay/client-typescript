@@ -423,6 +423,8 @@ export interface components {
             description?: string;
             /** @description Your ID for the customer. */
             customer?: string;
+            /** @description The payer's email address. When the payment succeeds, the receipt is sent to it, in the language of the payment's country, else English. Any value that is not one email address returns 400 `invalid_receipt_email`. It is not returned. */
+            receipt_email?: string;
             /**
              * Format: uri
              * @description The page the payer returns to after a successful payment. It must be an absolute `https` URL with a host name and no user info. IP addresses and `localhost` are not accepted, in test mode too. Any other value returns 400 `invalid_return_url`.
@@ -542,6 +544,8 @@ export interface components {
             available_at?: string;
             next_action?: components["schemas"]["NextAction"];
             crypto?: components["schemas"]["CryptoFinality"];
+            invoice?: components["schemas"]["PaymentIntentInvoice"];
+            receipt?: components["schemas"]["PaymentIntentReceipt"];
             /**
              * Format: uri
              * @description The URL of the hosted checkout page. It is returned only in the response that creates the payment intent.
@@ -561,6 +565,26 @@ export interface components {
             metadata?: {
                 [key: string]: string;
             };
+        };
+        /** @description The invoice issued with the payment intent. Its hosted page shows the amount due, the due date and a pay button while the payment intent is open, and the outcome after. The page prints to an A4 PDF from the browser. */
+        PaymentIntentInvoice: {
+            /** @description The invoice number, sequential per account and mode, for example `3F9A1C07-0042`. A sandbox number starts with `TEST-`. */
+            number: string;
+            /**
+             * Format: uri
+             * @description The URL of the hosted invoice page. Share it with the payer.
+             */
+            hosted_invoice_url: string;
+        };
+        /** @description The receipt issued when the payment intent succeeds. Present from `succeeded` on. */
+        PaymentIntentReceipt: {
+            /** @description The receipt number, sequential per account and mode, for example `3F9A1C07-R0042`. A sandbox number starts with `TEST-`. */
+            number: string;
+            /**
+             * Format: uri
+             * @description The URL of the hosted receipt page.
+             */
+            receipt_url: string;
         };
         /** @description Whether a crypto payment is final. Present only on crypto payment intents. On a layer 2 network, a payment succeeds when the transfer is seen and becomes final when its batch is confirmed on layer 1. Until then the chain can reverse it: the payment intent moves to `failed`, and you receive the events `payment_intent.failed` and `payment_intent.reversed`. When the payment becomes final, you receive `payment_intent.finalized` once. For a high-value order, wait for this event before you deliver. */
         CryptoFinality: {

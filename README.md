@@ -12,7 +12,7 @@ Node.js 20.3 or later.
 ## Installation
 
 ```sh
-npm install github:lemakpay/client-typescript#v0.4.0
+npm install github:lemakpay/client-typescript#v0.5.0
 ```
 
 ## Usage
@@ -91,6 +91,26 @@ for await (const pi of lemak.listPaymentIntents({ status: "succeeded" })) {
   console.log(pi.id);
 }
 ```
+
+### Invoices and receipts
+
+Every payment intent carries an invoice. Pass `receipt_email` on create, and the payer gets a
+receipt by email when the payment succeeds:
+
+```ts
+const pi = await lemak.createPaymentIntent({
+  amount: 100000,
+  currency: "THB",
+  merchant_order_id: "order-1001",
+  receipt_email: "payer@example.com",
+});
+
+console.log(pi.invoice?.number, pi.invoice?.hosted_invoice_url); // share the URL with the payer
+console.log(pi.receipt?.number, pi.receipt?.receipt_url); // present from succeeded on
+```
+
+`receipt_email` is not returned. A value that is not one email address returns 400
+`invalid_receipt_email`. The hosted invoice and receipt pages have a Download PDF button.
 
 ### Request signing
 
