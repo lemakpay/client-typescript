@@ -519,6 +519,8 @@ export interface components {
             currency: components["schemas"]["Currency"];
             /** @description What the payer pays. Present only with automatic conversion. The fee is charged on this amount. */
             payment_amount?: components["schemas"]["Money"];
+            /** @description What the payer is shown and charged. Present once a payment method is chosen. */
+            presentment_details?: components["schemas"]["PresentmentDetails"];
             /**
              * @description Who pays the conversion markup. Present only with automatic conversion.
              * @enum {string}
@@ -844,6 +846,37 @@ export interface components {
             icon_url?: string;
             /** @description The currencies the method serves, in alphabetical order. */
             currencies: components["schemas"]["Currency"][];
+            /** @description The charge rules of the method, per currency it serves. */
+            transaction_limits: {
+                [key: string]: components["schemas"]["TransactionLimits"];
+            };
+        };
+        /** @description How the payer's charge is computed from a payment intent's `amount`, which never changes. */
+        TransactionLimits: {
+            /**
+             * Format: int64
+             * @description The least the payer is charged, in the smallest currency unit, or null for none.
+             */
+            minimum_amount: number | null;
+            /**
+             * Format: int64
+             * @description The payer's charge is a multiple of this, in the smallest currency unit; 1 takes any amount.
+             */
+            rounding_increment: number;
+            /**
+             * @description The charge is rounded up, never down.
+             * @enum {string}
+             */
+            rounding_mode: "up";
+        };
+        /** @description The amount the payer is shown and charged. */
+        PresentmentDetails: {
+            /**
+             * Format: int64
+             * @description The amount charged, in the smallest currency unit: `amount` rounded up to the method's `rounding_increment`, and at least its `minimum_amount`.
+             */
+            presentment_amount: number;
+            presentment_currency: components["schemas"]["Currency"];
         };
         PaymentMethodList: {
             /** @constant */

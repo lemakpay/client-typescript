@@ -12,7 +12,7 @@ Node.js 20.3 or later.
 ## Installation
 
 ```sh
-npm install github:lemakpay/client-typescript#v0.2.0
+npm install github:lemakpay/client-typescript#v0.4.0
 ```
 
 ## Usage
@@ -59,6 +59,30 @@ required. The response keeps your price in `amount` and `currency`; the payer's 
   amount is rounded up to the payment currency's smallest unit.
 - `merchant`: the payer pays `amount` converted without markup, rounded up. You receive the
   payment amount less your fee, converted at `fx.rate` and rounded down.
+
+### What the payer is charged
+
+A payment method can charge only in steps and above a minimum. Each method lists these rules per
+currency in `transaction_limits`:
+
+```ts
+const { data } = await lemak.listPaymentMethods({ currency: "THB" });
+for (const m of data) {
+  const limits = m.transaction_limits["THB"];
+  console.log(m.code, limits?.rounding_increment, limits?.minimum_amount); // minimum_amount is null for none
+}
+```
+
+The payer's charge is `amount` rounded up to the method's `rounding_increment`, and at least its
+`minimum_amount`. `amount` never changes. Once a payment method is chosen, the payment intent
+shows the charge in `presentment_details`:
+
+```ts
+const { presentment_amount, presentment_currency } = pi.presentment_details ?? {};
+```
+
+A method that is not enabled for your account in that currency returns 400
+`payment_method_unavailable`.
 
 List methods return an async iterator that fetches pages as needed:
 
