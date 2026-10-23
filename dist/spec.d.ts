@@ -503,6 +503,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the addresses webhooks come from
+         * @description Returns the IP addresses that webhook deliveries leave from. No key is needed. Verify the signature in the `X-Webhook-Signature` header: that is the control. Allow-listing these addresses is optional. A change is announced to every merchant before it takes effect, and `updated_at` moves with it. API requests reach shared Cloudflare addresses, which are not listed.
+         */
+        get: operations["listIps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -981,6 +1001,17 @@ export interface components {
             data: components["schemas"]["WebhookPublicKey"][];
             /** @description Whether more objects exist after this page. */
             has_more: boolean;
+        };
+        IpList: {
+            /** @constant */
+            object: "ip_list";
+            /** @description The IPv4 and IPv6 addresses webhook deliveries leave from. Empty until published. */
+            webhooks: string[];
+            /**
+             * Format: date-time
+             * @description When the list last changed. Absent while the list is empty.
+             */
+            updated_at?: string;
         };
         /** @description The exchange rate locked for this payment. */
         FxLock: {
@@ -2247,6 +2278,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookPublicKeyList"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listIps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The addresses. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IpList"];
                 };
             };
             default: components["responses"]["ErrorResponse"];

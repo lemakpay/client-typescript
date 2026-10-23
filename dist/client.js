@@ -179,6 +179,10 @@ export class Client {
     fxQuote(query, opts) {
         return this.#request("GET", "/v1/fx/quotes", query, undefined, opts);
     }
+    /** The addresses webhook deliveries leave from. The list is empty until published. */
+    listIps(opts) {
+        return this.#request("GET", "/v1/ips", undefined, undefined, opts);
+    }
     /** The payment methods the key's mode can use, each with the currencies it serves. */
     listPaymentMethods(query, opts) {
         return this.#request("GET", "/v1/payment_methods", query, undefined, opts);

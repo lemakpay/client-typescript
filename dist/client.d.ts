@@ -34,6 +34,7 @@ export type DeclineCode = NonNullable<Schemas["Error"]["decline_code"]>;
 export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
+export type IpList = Schemas["IpList"];
 export type PaymentMethod = Schemas["PaymentMethod"];
 export type PaymentMethodList = Schemas["PaymentMethodList"];
 export type TransactionLimits = Schemas["TransactionLimits"];
@@ -160,6 +161,8 @@ export declare class Client {
     balance(opts?: RequestOptions): Promise<Balance>;
     /** An indicative rate. The rate a payment uses is fixed at its lock point. */
     fxQuote(query: FxQuoteQuery, opts?: RequestOptions): Promise<FxQuote>;
+    /** The addresses webhook deliveries leave from. The list is empty until published. */
+    listIps(opts?: RequestOptions): Promise<IpList>;
     /** The payment methods the key's mode can use, each with the currencies it serves. */
     listPaymentMethods(query?: ListPaymentMethodsQuery, opts?: RequestOptions): Promise<PaymentMethodList>;
     /** The currencies you can charge in, quote and settle in, with their exponents. */
