@@ -54,7 +54,7 @@ export declare const EVIDENCE_FILE_KEYS: readonly ["receipt", "customer_communic
 /** Where a Client sends requests when baseURL is not set. */
 export declare const DEFAULT_BASE_URL = "https://api.lemak.cash";
 /** The version these types describe, sent as Api-Version unless the client names another. */
-export declare const API_VERSION = "2026-09-01";
+export declare const API_VERSION = "2026-10-23";
 /** How requests are signed when the account requires a signature_scheme. */
 export type Signer = {
     scheme: "hmac_sha256";
