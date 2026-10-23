@@ -15,7 +15,24 @@ export type PaymentAttemptList = Schemas["PaymentAttemptList"];
 export type PaymentAttemptCreate = NonNullable<operations["createPaymentAttempt"]["requestBody"]>["content"]["application/json"];
 export type Dispute = Schemas["Dispute"];
 export type DisputeEvidence = Schemas["DisputeEvidence"];
+export type DisputeEvidenceFileKey = (typeof EVIDENCE_FILE_KEYS)[number];
+export type File = Schemas["File"];
+export type FilePurpose = Schemas["FilePurpose"];
+export type FileType = Schemas["FileType"];
+export type Refund = Schemas["Refund"];
+export type RefundCreate = Schemas["RefundCreate"];
+export type RefundStatus = Schemas["RefundStatus"];
+export type RefundReason = Schemas["RefundReason"];
+export type ListRefundsQuery = NonNullable<operations["listRefunds"]["parameters"]["query"]>;
+export type BalanceTransaction = Schemas["BalanceTransaction"];
+export type BalanceTransactionType = Schemas["BalanceTransactionType"];
+export type BalanceTransactionBalanceType = BalanceTransaction["balance_type"];
+export type ListBalanceTransactionsQuery = NonNullable<operations["listBalanceTransactions"]["parameters"]["query"]>;
+export type StatementQuery = operations["statement"]["parameters"]["query"];
 export type Settlement = Schemas["Settlement"];
+export type SettlementCreate = Schemas["SettlementCreate"];
+export type MerchantRequest = Schemas["MerchantRequest"];
+export type DeclineCode = NonNullable<Schemas["Error"]["decline_code"]>;
 export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
@@ -34,6 +51,9 @@ export type ListDisputesQuery = NonNullable<operations["listDisputes"]["paramete
 export type ListSettlementsQuery = NonNullable<operations["listSettlements"]["parameters"]["query"]>;
 export type EventsQuery =NonNullable<operations["events"]["parameters"]["query"]>;
 export type FxQuoteQuery = operations["fxQuote"]["parameters"]["query"];
+
+/** The DisputeEvidence keys that take the ID of a file uploaded with purpose dispute_evidence. */
+export const EVIDENCE_FILE_KEYS = ["receipt", "customer_communication", "shipping_documentation", "uncategorized_file"] as const;
 
 /** Where a Client sends requests when baseURL is not set. */
 export const DEFAULT_BASE_URL = "https://api.lemak.cash";
@@ -55,7 +75,7 @@ export type Signer =
   | { scheme: "ed25519"; keyId: string; sign: (message: Uint8Array) => Promise<Uint8Array> };
 
 export interface ClientOptions {
-  /** The secret API key, sk_test_… or sk_live_…. */
+  /** The secret API key, sk_test_… or sk_live_…, or a withdrawal key, wk_test_… or wk_live_…, which createSettlement needs in production. */
   apiKey: string;
   baseURL?: string;
   apiVersion?: string;
@@ -79,6 +99,8 @@ export class LemakError extends Error {
   readonly status: number;
   readonly type: ErrorType | undefined;
   readonly code: string;
+  /** Set on payment_blocked alone: the kind of risk rule that declined the payment. */
+  readonly declineCode: DeclineCode | undefined;
   readonly param: string | undefined;
   readonly requestId: string | undefined;
 
@@ -90,6 +112,7 @@ export class LemakError extends Error {
     this.status = status;
     this.type = e?.type;
     this.code = code;
+    this.declineCode = e?.decline_code;
     this.param = e?.param;
     this.requestId = e?.request_id ?? requestId ?? undefined;
   }
@@ -125,6 +148,11 @@ export async function sign(signer: Signer, text: string): Promise<{ signature: s
 }
 
 type Query = Record<string, string | number | boolean | undefined>;
+
+// A request body sent as it is, such as a multipart upload. Any other body is JSON.
+class RawBody {
+  constructor(readonly bytes: Uint8Array<ArrayBuffer>, readonly contentType: string) {}
+}
 
 export class Client {
   readonly #opts: ClientOptions;
@@ -186,9 +214,19 @@ export class Client {
     return this.#request("POST", `/v1/disputes/${encodeURIComponent(id)}/evidence`, undefined, body, opts);
   }
 
-  /** Requests a settlement of the available balance. Available only on a manual settlement schedule. */
-  createSettlement(opts?: RequestOptions): Promise<Settlement> {
-    return this.#request("POST", "/v1/settlements", undefined, undefined, opts);
+  /** Accepts the dispute: it moves to lost and takes no further evidence. */
+  closeDispute(id: string, opts?: RequestOptions): Promise<Dispute> {
+    return this.#request("POST", `/v1/disputes/${encodeURIComponent(id)}/close`, undefined, undefined, opts);
+  }
+
+  /**
+   * Withdraws from the available balance. Without a body it pays every released payment to the
+   * default destination. When the account's policy holds the withdrawal for a second approver,
+   * the answer is the pending request: check `object === "merchant_request"`. In production it
+   * takes a withdrawal key, wk_live_….
+   */
+  createSettlement(body?: SettlementCreate, opts?: RequestOptions): Promise<Settlement | MerchantRequest> {
+    return this.#request("POST", "/v1/settlements", undefined, body, opts);
   }
 
   /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
@@ -199,6 +237,45 @@ export class Client {
   /** One settlement, with the payment intents it pays in `items`. */
   settlement(id: string, opts?: RequestOptions): Promise<Settlement> {
     return this.#request("GET", `/v1/settlements/${encodeURIComponent(id)}`, undefined, undefined, opts);
+  }
+
+  /** Uploads a PDF, a JPEG or a PNG of at most 5 MB. The signature covers the multipart body as sent. */
+  async createFile(params: { file: Blob | Uint8Array<ArrayBuffer>; filename: string; purpose: FilePurpose }, opts?: RequestOptions): Promise<File> {
+    const form = new FormData();
+    form.append("purpose", params.purpose);
+    form.append("file", params.file instanceof Blob ? params.file : new Blob([params.file]), params.filename);
+    // Serialize once, so the bytes signed are the bytes sent on every attempt.
+    const req = new Request("http://localhost/", { method: "POST", body: form });
+    const raw = new RawBody(new Uint8Array(await req.arrayBuffer()), req.headers.get("Content-Type") ?? "");
+    return this.#request("POST", "/v1/files", undefined, raw, opts);
+  }
+
+  file(id: string, opts?: RequestOptions): Promise<File> {
+    return this.#request("GET", `/v1/files/${encodeURIComponent(id)}`, undefined, undefined, opts);
+  }
+
+  /** Refunds a succeeded payment intent, in whole or in part. */
+  createRefund(body: RefundCreate, opts?: RequestOptions): Promise<Refund> {
+    return this.#request("POST", "/v1/refunds", undefined, body, opts);
+  }
+
+  /** The refunds the filter matches, newest first, fetched page by page. */
+  listRefunds(query?: ListRefundsQuery, opts?: RequestOptions): AsyncGenerator<Refund> {
+    return this.#pages("/v1/refunds", query, opts);
+  }
+
+  refund(id: string, opts?: RequestOptions): Promise<Refund> {
+    return this.#request("GET", `/v1/refunds/${encodeURIComponent(id)}`, undefined, undefined, opts);
+  }
+
+  /** Every movement of the balance, newest first, fetched page by page. */
+  listBalanceTransactions(query?: ListBalanceTransactionsQuery, opts?: RequestOptions): AsyncGenerator<BalanceTransaction> {
+    return this.#pages("/v1/balance_transactions", query, opts);
+  }
+
+  /** The statement of one month as it is served: CSV or HTML text, by `format`. */
+  statement(query: StatementQuery, opts?: RequestOptions): Promise<string> {
+    return this.#request("GET", "/v1/statements", query, undefined, opts, true);
   }
 
   balance(opts?: RequestOptions): Promise<Balance> {
@@ -242,7 +319,7 @@ export class Client {
     }
   }
 
-  async #request<T>(method: "GET" | "POST", path: string, query: Query | undefined, body: unknown, opts: RequestOptions = {}): Promise<T> {
+  async #request<T>(method: "GET" | "POST", path: string, query: Query | undefined, body: unknown, opts: RequestOptions = {}, asText = false): Promise<T> {
     const o = this.#opts;
     const qs = new URLSearchParams(
       Object.entries(query ?? {})
@@ -251,12 +328,12 @@ export class Client {
         .map(([k, v]) => [k, String(v)]),
     ).toString();
     const target = qs ? `${path}?${qs}` : path;
-    const bytes = body === undefined ? new Uint8Array(0) : utf8(JSON.stringify(body));
+    const bytes = body === undefined ? new Uint8Array(0) : body instanceof RawBody ? body.bytes : utf8(JSON.stringify(body));
     const headers: Record<string, string> = {
       Authorization: `Bearer ${o.apiKey}`,
       "Api-Version": opts.apiVersion ?? o.apiVersion ?? API_VERSION,
     };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (body !== undefined) headers["Content-Type"] = body instanceof RawBody ? body.contentType : "application/json";
     if (method === "POST") headers["Idempotency-Key"] = opts.idempotencyKey ?? crypto.randomUUID();
 
     const doFetch = o.fetch ?? globalThis.fetch;
@@ -304,7 +381,7 @@ export class Client {
         continue;
       }
       if (res.status >= 400) throw new LemakError(res.status, parsed, res.headers.get("Request-Id"));
-      return parsed as T;
+      return (asText ? text : parsed) as T;
     }
   }
 }

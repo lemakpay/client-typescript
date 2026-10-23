@@ -12,7 +12,7 @@ Node.js 20.3 or later.
 ## Installation
 
 ```sh
-npm install github:lemakpay/client-typescript#v0.5.0
+npm install github:lemakpay/client-typescript#v0.6.0
 ```
 
 ## Usage
@@ -112,6 +112,52 @@ console.log(pi.receipt?.number, pi.receipt?.receipt_url); // present from succee
 `receipt_email` is not returned. A value that is not one email address returns 400
 `invalid_receipt_email`. The hosted invoice and receipt pages have a Download PDF button.
 
+### Refunds
+
+```ts
+const refund = await lemak.createRefund({ payment_intent: paymentIntent.id, amount: 50000 });
+```
+
+Leave out `amount` to refund all that is left. `listRefunds` and `refund` read refunds back, and
+the `refund.created`, `refund.succeeded` and `refund.failed` events report their progress.
+
+### Disputes and evidence files
+
+Upload a file, then name it under one of the file keys of the evidence:
+
+```ts
+const file = await lemak.createFile({
+  file: await readFile("receipt.pdf"), // a Uint8Array or a Blob
+  filename: "receipt.pdf",
+  purpose: "dispute_evidence",
+});
+await lemak.submitDisputeEvidence(disputeId, { evidence: { receipt: file.id } });
+```
+
+A file is a PDF, a JPEG or a PNG of at most 5 MB. `EVIDENCE_FILE_KEYS` lists the keys that take
+a file. To accept a dispute instead, call `closeDispute`.
+
+### Balance transactions and statements
+
+`listBalanceTransactions` iterates over every movement of your balance. `statement` returns the
+statement of one month as CSV or as a printable HTML page:
+
+```ts
+const csv = await lemak.statement({ month: "2026-09", format: "csv" });
+```
+
+### Withdrawals
+
+On a manual settlement schedule, `createSettlement` withdraws from the available balance. In
+production it needs a withdrawal key (`wk_live_...`) as the client's `apiKey`. If your approval
+policy holds the withdrawal for a second approver, you get the pending request instead of a
+settlement:
+
+```ts
+const res = await lemak.createSettlement({ amount: 100000, currency: "USD" });
+if (res.object === "merchant_request") console.log("waiting for approval:", res.id);
+```
+
 ### Request signing
 
 If your account requires signed requests, pass a signer:
@@ -159,6 +205,8 @@ the request options. Network errors, `429` and `5xx` responses are retried twice
 ### Errors
 
 API errors are thrown as `LemakError`, with `status`, `type`, `code`, `param` and `requestId`.
+A `payment_blocked` error also carries `declineCode`, the kind of risk rule that declined the
+payment.
 
 ### Webhooks
 

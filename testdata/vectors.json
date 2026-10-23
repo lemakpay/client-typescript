@@ -8,6 +8,11 @@
       "path": "/v1/balance"
     },
     {
+      "operation": "listBalanceTransactions",
+      "method": "GET",
+      "path": "/v1/balance_transactions"
+    },
+    {
       "operation": "listCurrencies",
       "method": "GET",
       "path": "/v1/currencies"
@@ -23,6 +28,11 @@
       "path": "/v1/disputes/{id}"
     },
     {
+      "operation": "closeDispute",
+      "method": "POST",
+      "path": "/v1/disputes/{id}/close"
+    },
+    {
       "operation": "submitDisputeEvidence",
       "method": "POST",
       "path": "/v1/disputes/{id}/evidence"
@@ -31,6 +41,16 @@
       "operation": "events",
       "method": "GET",
       "path": "/v1/events"
+    },
+    {
+      "operation": "createFile",
+      "method": "POST",
+      "path": "/v1/files"
+    },
+    {
+      "operation": "file",
+      "method": "GET",
+      "path": "/v1/files/{id}"
     },
     {
       "operation": "fxQuote",
@@ -73,6 +93,21 @@
       "path": "/v1/payment_methods"
     },
     {
+      "operation": "listRefunds",
+      "method": "GET",
+      "path": "/v1/refunds"
+    },
+    {
+      "operation": "createRefund",
+      "method": "POST",
+      "path": "/v1/refunds"
+    },
+    {
+      "operation": "refund",
+      "method": "GET",
+      "path": "/v1/refunds/{id}"
+    },
+    {
       "operation": "listSettlements",
       "method": "GET",
       "path": "/v1/settlements"
@@ -86,6 +121,11 @@
       "operation": "settlement",
       "method": "GET",
       "path": "/v1/settlements/{id}"
+    },
+    {
+      "operation": "statement",
+      "method": "GET",
+      "path": "/v1/statements"
     },
     {
       "operation": "advancePaymentIntent",
@@ -120,7 +160,10 @@
     "settlement.failed",
     "dispute.opened",
     "dispute.updated",
-    "dispute.closed"
+    "dispute.closed",
+    "refund.created",
+    "refund.succeeded",
+    "refund.failed"
   ],
   "hmac_secret": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
   "ed25519_seed": "0707070707070707070707070707070707070707070707070707070707070707",

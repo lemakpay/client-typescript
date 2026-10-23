@@ -1,4 +1,6 @@
 import { base64, concat, sha256hex, unhex, utf8 } from "./bytes.js";
+/** The DisputeEvidence keys that take the ID of a file uploaded with purpose dispute_evidence. */
+export const EVIDENCE_FILE_KEYS = ["receipt", "customer_communication", "shipping_documentation", "uncategorized_file"];
 /** Where a Client sends requests when baseURL is not set. */
 export const DEFAULT_BASE_URL = "https://api.lemak.cash";
 /** The version these types describe, sent as Api-Version unless the client names another. */
@@ -14,6 +16,8 @@ export class LemakError extends Error {
     status;
     type;
     code;
+    /** Set on payment_blocked alone: the kind of risk rule that declined the payment. */
+    declineCode;
     param;
     requestId;
     constructor(status, body, requestId) {
@@ -24,6 +28,7 @@ export class LemakError extends Error {
         this.status = status;
         this.type = e?.type;
         this.code = code;
+        this.declineCode = e?.decline_code;
         this.param = e?.param;
         this.requestId = e?.request_id ?? requestId ?? undefined;
     }
@@ -56,6 +61,15 @@ export async function sign(signer, text) {
         key = await crypto.subtle.importKey("pkcs8", concat(PKCS8_ED25519, key), { name: "Ed25519" }, false, ["sign"]);
     }
     return { signature: "v2=" + base64(await crypto.subtle.sign("Ed25519", key, utf8(text))), keyId: signer.keyId };
+}
+// A request body sent as it is, such as a multipart upload. Any other body is JSON.
+class RawBody {
+    bytes;
+    contentType;
+    constructor(bytes, contentType) {
+        this.bytes = bytes;
+        this.contentType = contentType;
+    }
 }
 export class Client {
     #opts;
@@ -105,9 +119,18 @@ export class Client {
     submitDisputeEvidence(id, body, opts) {
         return this.#request("POST", `/v1/disputes/${encodeURIComponent(id)}/evidence`, undefined, body, opts);
     }
-    /** Requests a settlement of the available balance. Available only on a manual settlement schedule. */
-    createSettlement(opts) {
-        return this.#request("POST", "/v1/settlements", undefined, undefined, opts);
+    /** Accepts the dispute: it moves to lost and takes no further evidence. */
+    closeDispute(id, opts) {
+        return this.#request("POST", `/v1/disputes/${encodeURIComponent(id)}/close`, undefined, undefined, opts);
+    }
+    /**
+     * Withdraws from the available balance. Without a body it pays every released payment to the
+     * default destination. When the account's policy holds the withdrawal for a second approver,
+     * the answer is the pending request: check `object === "merchant_request"`. In production it
+     * takes a withdrawal key, wk_live_….
+     */
+    createSettlement(body, opts) {
+        return this.#request("POST", "/v1/settlements", undefined, body, opts);
     }
     /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
     listSettlements(query, opts) {
@@ -116,6 +139,38 @@ export class Client {
     /** One settlement, with the payment intents it pays in `items`. */
     settlement(id, opts) {
         return this.#request("GET", `/v1/settlements/${encodeURIComponent(id)}`, undefined, undefined, opts);
+    }
+    /** Uploads a PDF, a JPEG or a PNG of at most 5 MB. The signature covers the multipart body as sent. */
+    async createFile(params, opts) {
+        const form = new FormData();
+        form.append("purpose", params.purpose);
+        form.append("file", params.file instanceof Blob ? params.file : new Blob([params.file]), params.filename);
+        // Serialize once, so the bytes signed are the bytes sent on every attempt.
+        const req = new Request("http://localhost/", { method: "POST", body: form });
+        const raw = new RawBody(new Uint8Array(await req.arrayBuffer()), req.headers.get("Content-Type") ?? "");
+        return this.#request("POST", "/v1/files", undefined, raw, opts);
+    }
+    file(id, opts) {
+        return this.#request("GET", `/v1/files/${encodeURIComponent(id)}`, undefined, undefined, opts);
+    }
+    /** Refunds a succeeded payment intent, in whole or in part. */
+    createRefund(body, opts) {
+        return this.#request("POST", "/v1/refunds", undefined, body, opts);
+    }
+    /** The refunds the filter matches, newest first, fetched page by page. */
+    listRefunds(query, opts) {
+        return this.#pages("/v1/refunds", query, opts);
+    }
+    refund(id, opts) {
+        return this.#request("GET", `/v1/refunds/${encodeURIComponent(id)}`, undefined, undefined, opts);
+    }
+    /** Every movement of the balance, newest first, fetched page by page. */
+    listBalanceTransactions(query, opts) {
+        return this.#pages("/v1/balance_transactions", query, opts);
+    }
+    /** The statement of one month as it is served: CSV or HTML text, by `format`. */
+    statement(query, opts) {
+        return this.#request("GET", "/v1/statements", query, undefined, opts, true);
     }
     balance(opts) {
         return this.#request("GET", "/v1/balance", undefined, undefined, opts);
@@ -152,20 +207,20 @@ export class Client {
             q.starting_after = last.id;
         }
     }
-    async #request(method, path, query, body, opts = {}) {
+    async #request(method, path, query, body, opts = {}, asText = false) {
         const o = this.#opts;
         const qs = new URLSearchParams(Object.entries(query ?? {})
             .filter((e) => e[1] !== undefined)
             .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
             .map(([k, v]) => [k, String(v)])).toString();
         const target = qs ? `${path}?${qs}` : path;
-        const bytes = body === undefined ? new Uint8Array(0) : utf8(JSON.stringify(body));
+        const bytes = body === undefined ? new Uint8Array(0) : body instanceof RawBody ? body.bytes : utf8(JSON.stringify(body));
         const headers = {
             Authorization: `Bearer ${o.apiKey}`,
             "Api-Version": opts.apiVersion ?? o.apiVersion ?? API_VERSION,
         };
         if (body !== undefined)
-            headers["Content-Type"] = "application/json";
+            headers["Content-Type"] = body instanceof RawBody ? body.contentType : "application/json";
         if (method === "POST")
             headers["Idempotency-Key"] = opts.idempotencyKey ?? crypto.randomUUID();
         const doFetch = o.fetch ?? globalThis.fetch;
@@ -219,7 +274,7 @@ export class Client {
             }
             if (res.status >= 400)
                 throw new LemakError(res.status, parsed, res.headers.get("Request-Id"));
-            return parsed;
+            return (asText ? text : parsed);
         }
     }
 }

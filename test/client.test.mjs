@@ -48,8 +48,14 @@ test("every merchant route of the spec has a method, and the method reaches that
     advancePaymentIntent: ["pi_A", {}],
     submitDisputeEvidence: ["dp_A", {}],
     fxQuote: [{ from: "THB", to: "USD" }],
+    createFile: [{ file: new Uint8Array([37, 80, 68, 70]), filename: "a.pdf", purpose: "dispute_evidence" }],
+    createRefund: [{ payment_intent: "pi_A" }],
+    statement: [{ month: "2026-09", format: "csv" }],
   };
-  const ids = { paymentIntent: "pi_A", cancelPaymentIntent: "pi_A", listPaymentAttempts: "pi_A", dispute: "dp_A", settlement: "st_A" };
+  const ids = {
+    paymentIntent: "pi_A", cancelPaymentIntent: "pi_A", listPaymentAttempts: "pi_A", dispute: "dp_A", closeDispute: "dp_A",
+    settlement: "st_A", file: "file_A", refund: "re_A",
+  };
   const methods = new Set(Object.getOwnPropertyNames(Client.prototype).filter((m) => m !== "constructor"));
   for (const r of v.routes) {
     assert.equal(typeof c[r.operation], "function", `no method calls ${r.method} ${r.path}`);
@@ -126,6 +132,51 @@ test("errors carry type, code, param and request id", async (t) => {
   assert.ok(err instanceof LemakError);
   assert.deepEqual([err.status, err.type, err.code, err.param, err.requestId], [422, "idempotency_error", "idempotency_key_reused", "Idempotency-Key", "req_A"]);
   assert.equal(seen.length, 1, "a 4xx is not retried");
+});
+
+test("payment_blocked carries decline_code", async (t) => {
+  const { client } = await serve(t,
+    [402, `{"error":{"type":"invalid_request_error","code":"payment_blocked","decline_code":"velocity","message":"m"}}`]);
+  const err = await client().createPaymentIntent({ amount: 1, currency: "THB", merchant_order_id: "o" }).catch((e) => e);
+  assert.deepEqual([err.status, err.code, err.declineCode], [402, "payment_blocked", "velocity"]);
+});
+
+test("an upload is multipart and the signature covers the bytes sent", async (t) => {
+  const { seen, client } = await serve(t, [201, `{"id":"file_A","object":"file"}`]);
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const seed = new Uint8Array(privateKey.export({ format: "der", type: "pkcs8" }).subarray(16));
+  const f = await client({ signer: { scheme: "ed25519", keyId: "key_A", privateKey: seed } })
+    .createFile({ file: new TextEncoder().encode("%PDF-1.7 x"), filename: "receipt.pdf", purpose: "dispute_evidence" });
+  assert.equal(f.id, "file_A");
+  const s = seen[0];
+  assert.match(s.headers["content-type"], /^multipart\/form-data; boundary=/);
+  assert.ok(s.headers["idempotency-key"]);
+  const form = await new Response(s.body, { headers: { "Content-Type": s.headers["content-type"] } }).formData();
+  assert.equal(form.get("purpose"), "dispute_evidence");
+  assert.equal(form.get("file").name, "receipt.pdf");
+  assert.equal(await form.get("file").text(), "%PDF-1.7 x");
+  const text = [s.headers["x-timestamp"], "POST", "/v1/files", createHash("sha256").update(s.body).digest("hex")].join("\n");
+  const sig = Buffer.from(s.headers["x-signature"].replace(/^v2=/, ""), "base64");
+  assert.ok(verify(null, Buffer.from(text), publicKey, sig), "signature verifies");
+});
+
+test("createSettlement returns a settlement or a held request", async (t) => {
+  const { seen, client } = await serve(t,
+    [201, `{"id":"st_A","object":"settlement"}`],
+    [202, `{"id":"mrq_A","object":"merchant_request","status":"pending","summary":{"amount":"100.00 USD"}}`]);
+  const c = client();
+  assert.equal((await c.createSettlement()).object, "settlement");
+  assert.equal(seen[0].body, "");
+  const r = await c.createSettlement({ amount: 10000, currency: "USD" });
+  assert.deepEqual([r.object, r.id], ["merchant_request", "mrq_A"]);
+  assert.equal(seen[1].body, `{"amount":10000,"currency":"USD"}`);
+});
+
+test("a statement is returned as text", async (t) => {
+  const csv = "date,type,amount\n2026-09-01,payment,1.00\n";
+  const { seen, client } = await serve(t, [200, csv, { "Content-Type": "text/csv" }]);
+  assert.equal(await client().statement({ month: "2026-09", format: "csv" }), csv);
+  assert.equal(seen[0].url, "/v1/statements?format=csv&month=2026-09");
 });
 
 test("a 5xx stops after the retries", async (t) => {

@@ -194,6 +194,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/disputes/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close a dispute
+         * @description Accepts the dispute: you agree that the payer is right and you submit no more evidence. The dispute moves to `lost`, the held amount goes back to the channel and the dispute fee is charged. A dispute that is already `lost` is returned as it is. A dispute that is `won` cannot be closed.
+         */
+        post: operations["closeDispute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a file
+         * @description Uploads a file as multipart/form-data. A file is a PDF, a JPEG or a PNG of at most 5 MB, and its type is read from its contents. Name the file in dispute evidence by its ID. You read the file back as an object; its contents stay with the platform.
+         */
+        post: operations["createFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve a file
+         * @description Retrieves a file you uploaded by its ID.
+         */
+        get: operations["file"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List refunds
+         * @description Returns a list of refunds, newest first.
+         */
+        get: operations["listRefunds"];
+        put?: never;
+        /**
+         * Create a refund
+         * @description Refunds all or part of a succeeded payment intent to the payer. The amount is in the currency the payer paid in, and without `amount` the whole amount that is left is refunded. Your balance is debited at once, in your settlement currency, at the exchange rate the payment locked, together with the refund fee of the payment channel. The fee of the payment itself is not returned. A refund starts `pending` and becomes `succeeded` when the payment channel confirms it. If the channel declines it, it becomes `failed` and the debit is returned to your balance.
+         *
+         *     A payment channel that does not take refunds returns 409 `refund_not_allowed`. A payment that has a dispute returns 409 `payment_disputed`, and a payment that has not succeeded returns 409 `payment_not_refundable`. An amount larger than what is left returns 400 `amount_exceeds_refundable`.
+         */
+        post: operations["createRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve a refund
+         * @description Retrieves a refund by its ID.
+         */
+        get: operations["refund"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settlements": {
         parameters: {
             query?: never;
@@ -209,7 +315,7 @@ export interface paths {
         put?: never;
         /**
          * Create a settlement
-         * @description Pays out your available balance now. Only accounts on the `manual` settlement schedule can use this endpoint. Accounts on a `daily` or `weekly` schedule are paid automatically.
+         * @description Withdraws from your available balance now. Only accounts on the `manual` settlement schedule can use this endpoint. Accounts on a `daily` or `weekly` schedule are paid automatically. Without `amount` it pays every released payment; with it, any amount up to the available balance. Without `payout_method` it pays the default destination. In production this endpoint takes a withdrawal key (`wk_live_...`) only: a payments key is 403 `withdrawals_require_withdrawal_key`.
          */
         post: operations["createSettlement"];
         delete?: never;
@@ -250,6 +356,46 @@ export interface paths {
          * @description Retrieves your balance in the mode of the API key. Each bucket lists one amount per currency.
          */
         get: operations["balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/balance_transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List balance transactions
+         * @description Returns every movement of money in your balance in the mode of the API key, newest first. Each entry moves one balance type in one currency: a payment credited net of its fee, a conversion to your settlement currency, a release from pending to available, a settlement, a dispute hold, release or loss, or an adjustment.
+         */
+        get: operations["listBalanceTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a monthly statement
+         * @description Returns your account statement for one calendar month in the mode of the API key: per currency, the opening balance, every balance transaction of the month, the totals by type and the closing balance, then the settlements paid in the month. The opening balance plus the net of the month is the closing balance. The statement is built on each request.
+         */
+        get: operations["statement"];
         put?: never;
         post?: never;
         delete?: never;
@@ -378,6 +524,11 @@ export interface components {
             message: string;
             /** @description The parameter the error relates to, if any. */
             param?: string;
+            /**
+             * @description Present on `payment_blocked` alone: the kind of risk rule that declined the payment. `velocity` is too many payments in a short time, `blocklist` is a payer on a block list, `geo` is the payer's country, `amount` is the amount, and `generic` is any other rule.
+             * @enum {string}
+             */
+            decline_code?: "velocity" | "blocklist" | "geo" | "amount" | "generic";
             /** @description The ID of the request, also sent in the `Request-Id` header. */
             request_id?: string;
         };
@@ -455,6 +606,50 @@ export interface components {
             national_id?: string;
             /** @description The payer's IP address. Some channels, such as `cashapp`, require it. Send the payer's address, not your server's. The hosted checkout page ignores this field and uses the payer's own address. */
             ip?: string;
+        };
+        /** @enum {string} */
+        MerchantRequestStatus: "pending" | "approved" | "rejected" | "expired";
+        MerchantRequest: {
+            id: string;
+            /** @constant */
+            object: "merchant_request";
+            /** @enum {string} */
+            mode: "live" | "test";
+            /** @enum {string} */
+            kind: "withdrawal" | "payout_method.create" | "payout_method.remove" | "payout_method.default";
+            status: components["schemas"]["MerchantRequestStatus"];
+            /** @description What the change does, masked: the amount and the destination of a withdrawal, the type, label and last four characters of a destination. */
+            summary: {
+                [key: string]: string;
+            };
+            /** @description The dashboard user who asked. */
+            requested_by?: string;
+            /** @description The withdrawal key that asked. */
+            requested_by_key?: string;
+            decided_by?: string;
+            /** Format: date-time */
+            decided_at?: string;
+            note?: string;
+            /** @description The settlement or the payout destination the approval made. */
+            result?: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        SettlementCreate: {
+            /**
+             * Format: int64
+             * @description Minor units to withdraw. Absent pays every released payment. The oldest payments are paid first, and the last one in part.
+             */
+            amount?: number;
+            /**
+             * @description Required with `amount`.
+             * @enum {string}
+             */
+            currency?: "USD";
+            /** @description An address book entry. Absent is the default. */
+            payout_method?: string;
         };
         /**
          * @description The kind of payout destination.
@@ -534,6 +729,7 @@ export interface components {
             status: components["schemas"]["PaymentIntentStatus"];
             /** @description The payment method code, once one is chosen. */
             payment_method?: string;
+            /** @description The whole fee for the payment, in the payment currency, once a payment method is chosen. It includes the cost of the payment channel. */
             fee?: components["schemas"]["Money"];
             fx?: components["schemas"]["FxLock"];
             /** @description The amount you receive, in the settlement currency. */
@@ -646,6 +842,8 @@ export interface components {
             type: components["schemas"]["DestinationType"];
             /** @description The last four characters of the destination, and nothing else. An empty string when the destination has four characters or fewer, or none. */
             masked: string;
+            /** @description Your own name for the destination */
+            label?: string;
         };
         SettlementItem: {
             /** @constant */
@@ -659,6 +857,52 @@ export interface components {
             /** @constant */
             object: "list";
             data: components["schemas"]["Settlement"][];
+            /** @description Whether more objects exist after this page. */
+            has_more: boolean;
+        };
+        /**
+         * @description What moved the money. `payment` credits a payment net of its fee. `conversion` is the exchange to your settlement currency, one entry per currency. `release` moves funds to the next balance type, such as pending to available. `settlement` takes available funds into a settlement. `dispute_hold`, `dispute_release` and `dispute_loss` are the stages of a dispute, and `dispute_fee` is the fee a lost dispute costs. `adjustment` is every other movement.
+         * @enum {string}
+         */
+        BalanceTransactionType: "payment" | "conversion" | "release" | "settlement" | "dispute_hold" | "dispute_release" | "dispute_loss" | "dispute_fee" | "adjustment";
+        BalanceTransaction: {
+            /** @description Unique identifier for the balance transaction. */
+            id: string;
+            /** @constant */
+            object: "balance_transaction";
+            type: components["schemas"]["BalanceTransactionType"];
+            /**
+             * @description The balance this entry moves, as GET /v1/balance names it.
+             * @enum {string}
+             */
+            balance_type: "available" | "pending" | "dispute_hold" | "review_hold";
+            /** @description The gross amount. Negative when money leaves this balance type. It equals `net` plus `fee`. */
+            amount: components["schemas"]["Money"];
+            /** @description The fee taken from `amount`. Non-zero on a `payment` alone. */
+            fee: components["schemas"]["Money"];
+            /** @description The amount this entry adds to the balance type. Negative when it takes. */
+            net: components["schemas"]["Money"];
+            /** @description The balance of this balance type and currency after this entry. */
+            running_balance: components["schemas"]["Money"];
+            /** @description The rate of a `conversion`: units of the original currency for one unit of the settlement currency, markup included. Absent on every other type. */
+            exchange_rate?: string;
+            /** @description The ID of the object that caused the entry: a payment intent (`pi_`), a settlement (`st_`) or a dispute (`dp_`). Absent on an adjustment. */
+            source?: string;
+            /**
+             * Format: date-time
+             * @description The time the entry was booked.
+             */
+            created: string;
+            /**
+             * Format: date-time
+             * @description When the funds become available. Present on the available balance, and on a pending entry of a payment once its release time is known.
+             */
+            available_on?: string;
+        };
+        BalanceTransactionList: {
+            /** @constant */
+            object: "list";
+            data: components["schemas"]["BalanceTransaction"][];
             /** @description Whether more objects exist after this page. */
             has_more: boolean;
         };
@@ -819,11 +1063,105 @@ export interface components {
              */
             closed_at?: string;
         };
+        /**
+         * @description The status of the refund. `pending` waits for the payment channel to confirm it, and `succeeded` and `failed` are final.
+         * @enum {string}
+         */
+        RefundStatus: "pending" | "succeeded" | "failed";
+        /**
+         * @description Why you refund the payment.
+         * @enum {string}
+         */
+        RefundReason: "duplicate" | "fraudulent" | "requested_by_customer";
+        RefundCreate: {
+            /** @description The ID of the payment intent to refund. */
+            payment_intent: string;
+            /**
+             * Format: int64
+             * @description The amount to refund, in the smallest unit of the currency the payer paid in. When omitted, the whole amount that is left is refunded.
+             */
+            amount?: number;
+            reason?: components["schemas"]["RefundReason"];
+            /** @description Key-value pairs of strings to store on the refund. */
+            metadata?: {
+                [key: string]: string;
+            };
+        };
+        Refund: {
+            /** @description Unique identifier for the refund. */
+            id: string;
+            /** @constant */
+            object: "refund";
+            /** @description The ID of the refunded payment intent. */
+            payment_intent: string;
+            /** @description The amount refunded to the payer, in the currency the payer paid in. */
+            amount: components["schemas"]["Money"];
+            /** @description The refund fee of the payment channel, in your settlement currency. It is debited from your balance with the refund. */
+            fee: components["schemas"]["Money"];
+            status: components["schemas"]["RefundStatus"];
+            reason?: components["schemas"]["RefundReason"];
+            /** @description Why the refund failed. Present on a `failed` refund alone. */
+            failure_code?: string;
+            /** @description The key-value pairs stored on the refund. */
+            metadata: {
+                [key: string]: string;
+            };
+            /**
+             * Format: date-time
+             * @description The time the refund was created.
+             */
+            created_at: string;
+        };
+        RefundList: {
+            /** @constant */
+            object: "list";
+            data: components["schemas"]["Refund"][];
+            /** @description Whether more objects exist after this page. */
+            has_more: boolean;
+        };
         DisputeEvidence: {
-            /** @description The evidence to add, as key-value pairs. Each key replaces the same key on the dispute. */
+            /** @description The evidence to add, as key-value pairs. Each key replaces the same key on the dispute. The keys `receipt`, `customer_communication`, `shipping_documentation` and `uncategorized_file` each take the ID of a file you uploaded with purpose `dispute_evidence`, in the same mode. Every other key takes any value. */
             evidence: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * @description Why the file was uploaded.
+         * @enum {string}
+         */
+        FilePurpose: "dispute_evidence";
+        /**
+         * @description The type of the file, read from its contents.
+         * @enum {string}
+         */
+        FileType: "pdf" | "jpg" | "png";
+        FileUpload: {
+            /**
+             * Format: binary
+             * @description The file. A PDF, a JPEG or a PNG of at most 5 MB.
+             */
+            file: string;
+            purpose: components["schemas"]["FilePurpose"];
+        };
+        File: {
+            /** @description Unique identifier for the file. */
+            id: string;
+            /** @constant */
+            object: "file";
+            purpose: components["schemas"]["FilePurpose"];
+            type: components["schemas"]["FileType"];
+            /** @description The name the file was uploaded with. */
+            filename: string;
+            /**
+             * Format: int64
+             * @description The size of the file in bytes.
+             */
+            size: number;
+            /**
+             * Format: date-time
+             * @description The time the file was uploaded.
+             */
+            created_at: string;
         };
         DisputeList: {
             /** @constant */
@@ -954,6 +1292,10 @@ export interface components {
         PaymentIntentID: string;
         /** @description The ID of the dispute. */
         DisputeID: string;
+        /** @description The ID of the file. */
+        FileID: string;
+        /** @description The ID of the refund. */
+        RefundID: string;
         /** @description The ID of the settlement. */
         SettlementID: string;
         /** @description The maximum number of objects to return, from 1 to 100. */
@@ -1031,6 +1373,15 @@ export interface operations {
             };
             /** @description A parameter is invalid. An unacceptable `return_url` returns `invalid_return_url`. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description No payment was started. No channel can take the payment (`no_channel_available`). Or the payment is over a limit on your account, in production mode only: `transaction_limit_exceeded` when the amount is over the limit for one payment, and `daily_limit_exceeded` when it would take the day's volume over the daily limit. The day is the UTC calendar day. The volume is every payment intent created that day whose payment started and did not fail, expire or get canceled. A hosted checkout where the payer chose no method does not count. Limits are in USD; another currency is converted at the current mid rate. Contact support to change a limit. Or risk rules declined the payment, in production mode only (`payment_blocked`). When the request names a `payment_method`, the decline can come after the payment intent is created: the payment intent is then `failed`, no channel order is placed, and you receive `payment_intent.failed`. */
+            402: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1173,6 +1524,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentAttempt"];
+                };
+            };
+            /** @description `payment_blocked`: risk rules declined the payment, in production mode only. The payment intent is `failed`, no channel order is placed, and you receive `payment_intent.failed`. */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             default: components["responses"]["ErrorResponse"];
@@ -1335,6 +1695,182 @@ export interface operations {
             default: components["responses"]["ErrorResponse"];
         };
     };
+    closeDispute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique key you generate for this request, up to 255 characters. A retry with the same key and body returns the original response. Without it, the request returns 400 `idempotency_key_required`. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path: {
+                /** @description The ID of the dispute. */
+                id: components["parameters"]["DisputeID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the dispute, now `lost`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique key you generate for this request, up to 255 characters. A retry with the same key and body returns the original response. Without it, the request returns 400 `idempotency_key_required`. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["FileUpload"];
+            };
+        };
+        responses: {
+            /** @description Returns the file. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["File"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    file: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path: {
+                /** @description The ID of the file. */
+                id: components["parameters"]["FileID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["File"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listRefunds: {
+        parameters: {
+            query?: {
+                /** @description The maximum number of objects to return, from 1 to 100. */
+                limit?: components["parameters"]["Limit"];
+                /** @description A pagination cursor. Pass the ID of the last object on the previous page to get the next page. */
+                starting_after?: components["parameters"]["StartingAfter"];
+                /** @description Only return refunds of this payment intent. */
+                payment_intent?: string;
+                /** @description Only return refunds with this status. */
+                status?: components["schemas"]["RefundStatus"];
+            };
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of refunds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundList"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique key you generate for this request, up to 255 characters. A retry with the same key and body returns the original response. Without it, the request returns 400 `idempotency_key_required`. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundCreate"];
+            };
+        };
+        responses: {
+            /** @description Returns the refund. A retry with the same `Idempotency-Key` and body returns the original response. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    refund: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path: {
+                /** @description The ID of the refund. */
+                id: components["parameters"]["RefundID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Returns the refund. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
     listSettlements: {
         parameters: {
             query?: {
@@ -1378,7 +1914,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SettlementCreate"];
+            };
+        };
         responses: {
             /** @description Returns the settlement. A retry with the same `Idempotency-Key` returns the original response. */
             201: {
@@ -1389,7 +1929,25 @@ export interface operations {
                     "application/json": components["schemas"]["Settlement"];
                 };
             };
-            /** @description Your account is not on the `manual` settlement schedule (`settlement_schedule_not_manual`). */
+            /** @description The merchant's policy holds the change for a second approver. The answer is the request; the change runs when someone other than its maker approves it. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MerchantRequest"];
+                };
+            };
+            /** @description The amount is not positive (`invalid_amount`), below your minimum withdrawal (`amount_below_minimum`) or above your available balance (`balance_insufficient`). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Your account is not on the `manual` settlement schedule (`settlement_schedule_not_manual`), or a production withdrawal used a payments key (`withdrawals_require_withdrawal_key`). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1398,7 +1956,16 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description There is nothing to settle (`nothing_to_settle`), or a request with the same `Idempotency-Key` is still in progress (`request_in_progress`). */
+            /** @description No payout destination with that ID is yours in this mode (`resource_missing`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description There is nothing to settle (`nothing_to_settle`), the destination is unverified (`destination_unverified`) or inside its 24-hour hold (`destination_cooling`), or a request with the same `Idempotency-Key` is still in progress (`request_in_progress`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1409,6 +1976,15 @@ export interface operations {
             };
             /** @description The `Idempotency-Key` was already used with a different request body (`idempotency_key_reused`). */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description A fund password reset froze withdrawals for 24 hours (`money_frozen`). */
+            423: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1474,6 +2050,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Balance"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listBalanceTransactions: {
+        parameters: {
+            query?: {
+                /** @description The maximum number of objects to return, from 1 to 100. */
+                limit?: components["parameters"]["Limit"];
+                /** @description A pagination cursor. Pass the ID of the last object on the previous page to get the next page. */
+                starting_after?: components["parameters"]["StartingAfter"];
+            };
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A list of balance transactions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceTransactionList"];
+                };
+            };
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    statement: {
+        parameters: {
+            query: {
+                /** @description The calendar month in UTC, as YYYY-MM. The current month is served to the time of the request and marked provisional. A month that has not begun is 400 invalid_month. */
+                month: string;
+                /** @description csv for a file Excel opens, or html for a printable A4 page. Print the page to save a PDF. Any other value is 400 invalid_format. */
+                format: "csv" | "html";
+                /** @description The language of the labels. Defaults to en. */
+                lang?: "en" | "zh-Hans" | "zh-Hant";
+            };
+            header?: {
+                /** @description The API version for this request, as a date in `YYYY-MM-DD` format. When omitted, your account's version applies, which is set to the latest version on your first request. An unknown version returns 400 `invalid_api_version`. */
+                "Api-Version"?: components["parameters"]["ApiVersion"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The statement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "text/html": string;
                 };
             };
             default: components["responses"]["ErrorResponse"];

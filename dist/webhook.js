@@ -85,6 +85,9 @@ export const EVENT_TYPES = [
     "dispute.opened",
     "dispute.updated",
     "dispute.closed",
+    "refund.created",
+    "refund.succeeded",
+    "refund.failed",
 ];
 /** Decodes a verified delivery body. Unknown fields are kept and ignored. */
 export function parseEvent(rawBody) {

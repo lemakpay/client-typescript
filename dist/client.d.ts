@@ -13,7 +13,24 @@ export type PaymentAttemptList = Schemas["PaymentAttemptList"];
 export type PaymentAttemptCreate = NonNullable<operations["createPaymentAttempt"]["requestBody"]>["content"]["application/json"];
 export type Dispute = Schemas["Dispute"];
 export type DisputeEvidence = Schemas["DisputeEvidence"];
+export type DisputeEvidenceFileKey = (typeof EVIDENCE_FILE_KEYS)[number];
+export type File = Schemas["File"];
+export type FilePurpose = Schemas["FilePurpose"];
+export type FileType = Schemas["FileType"];
+export type Refund = Schemas["Refund"];
+export type RefundCreate = Schemas["RefundCreate"];
+export type RefundStatus = Schemas["RefundStatus"];
+export type RefundReason = Schemas["RefundReason"];
+export type ListRefundsQuery = NonNullable<operations["listRefunds"]["parameters"]["query"]>;
+export type BalanceTransaction = Schemas["BalanceTransaction"];
+export type BalanceTransactionType = Schemas["BalanceTransactionType"];
+export type BalanceTransactionBalanceType = BalanceTransaction["balance_type"];
+export type ListBalanceTransactionsQuery = NonNullable<operations["listBalanceTransactions"]["parameters"]["query"]>;
+export type StatementQuery = operations["statement"]["parameters"]["query"];
 export type Settlement = Schemas["Settlement"];
+export type SettlementCreate = Schemas["SettlementCreate"];
+export type MerchantRequest = Schemas["MerchantRequest"];
+export type DeclineCode = NonNullable<Schemas["Error"]["decline_code"]>;
 export type SettlementItem = Schemas["SettlementItem"];
 export type Balance = Schemas["Balance"];
 export type FxQuote = Schemas["FxQuote"];
@@ -32,6 +49,8 @@ export type ListDisputesQuery = NonNullable<operations["listDisputes"]["paramete
 export type ListSettlementsQuery = NonNullable<operations["listSettlements"]["parameters"]["query"]>;
 export type EventsQuery = NonNullable<operations["events"]["parameters"]["query"]>;
 export type FxQuoteQuery = operations["fxQuote"]["parameters"]["query"];
+/** The DisputeEvidence keys that take the ID of a file uploaded with purpose dispute_evidence. */
+export declare const EVIDENCE_FILE_KEYS: readonly ["receipt", "customer_communication", "shipping_documentation", "uncategorized_file"];
 /** Where a Client sends requests when baseURL is not set. */
 export declare const DEFAULT_BASE_URL = "https://api.lemak.cash";
 /** The version these types describe, sent as Api-Version unless the client names another. */
@@ -52,7 +71,7 @@ export type Signer = {
     sign: (message: Uint8Array) => Promise<Uint8Array>;
 };
 export interface ClientOptions {
-    /** The secret API key, sk_test_… or sk_live_…. */
+    /** The secret API key, sk_test_… or sk_live_…, or a withdrawal key, wk_test_… or wk_live_…, which createSettlement needs in production. */
     apiKey: string;
     baseURL?: string;
     apiVersion?: string;
@@ -74,6 +93,8 @@ export declare class LemakError extends Error {
     readonly status: number;
     readonly type: ErrorType | undefined;
     readonly code: string;
+    /** Set on payment_blocked alone: the kind of risk rule that declined the payment. */
+    readonly declineCode: DeclineCode | undefined;
     readonly param: string | undefined;
     readonly requestId: string | undefined;
     constructor(status: number, body: unknown, requestId: string | null);
@@ -107,12 +128,35 @@ export declare class Client {
     listDisputes(query?: ListDisputesQuery, opts?: RequestOptions): AsyncGenerator<Dispute>;
     dispute(id: string, opts?: RequestOptions): Promise<Dispute>;
     submitDisputeEvidence(id: string, body: DisputeEvidence, opts?: RequestOptions): Promise<Dispute>;
-    /** Requests a settlement of the available balance. Available only on a manual settlement schedule. */
-    createSettlement(opts?: RequestOptions): Promise<Settlement>;
+    /** Accepts the dispute: it moves to lost and takes no further evidence. */
+    closeDispute(id: string, opts?: RequestOptions): Promise<Dispute>;
+    /**
+     * Withdraws from the available balance. Without a body it pays every released payment to the
+     * default destination. When the account's policy holds the withdrawal for a second approver,
+     * the answer is the pending request: check `object === "merchant_request"`. In production it
+     * takes a withdrawal key, wk_live_….
+     */
+    createSettlement(body?: SettlementCreate, opts?: RequestOptions): Promise<Settlement | MerchantRequest>;
     /** The settlements in the key's mode, newest first. Each one leaves out its items; `settlement` returns them. */
     listSettlements(query?: ListSettlementsQuery, opts?: RequestOptions): AsyncGenerator<Settlement>;
     /** One settlement, with the payment intents it pays in `items`. */
     settlement(id: string, opts?: RequestOptions): Promise<Settlement>;
+    /** Uploads a PDF, a JPEG or a PNG of at most 5 MB. The signature covers the multipart body as sent. */
+    createFile(params: {
+        file: Blob | Uint8Array<ArrayBuffer>;
+        filename: string;
+        purpose: FilePurpose;
+    }, opts?: RequestOptions): Promise<File>;
+    file(id: string, opts?: RequestOptions): Promise<File>;
+    /** Refunds a succeeded payment intent, in whole or in part. */
+    createRefund(body: RefundCreate, opts?: RequestOptions): Promise<Refund>;
+    /** The refunds the filter matches, newest first, fetched page by page. */
+    listRefunds(query?: ListRefundsQuery, opts?: RequestOptions): AsyncGenerator<Refund>;
+    refund(id: string, opts?: RequestOptions): Promise<Refund>;
+    /** Every movement of the balance, newest first, fetched page by page. */
+    listBalanceTransactions(query?: ListBalanceTransactionsQuery, opts?: RequestOptions): AsyncGenerator<BalanceTransaction>;
+    /** The statement of one month as it is served: CSV or HTML text, by `format`. */
+    statement(query: StatementQuery, opts?: RequestOptions): Promise<string>;
     balance(opts?: RequestOptions): Promise<Balance>;
     /** An indicative rate. The rate a payment uses is fixed at its lock point. */
     fxQuote(query: FxQuoteQuery, opts?: RequestOptions): Promise<FxQuote>;

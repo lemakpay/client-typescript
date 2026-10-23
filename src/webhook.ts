@@ -99,6 +99,9 @@ export const EVENT_TYPES = [
   "dispute.opened",
   "dispute.updated",
   "dispute.closed",
+  "refund.created",
+  "refund.succeeded",
+  "refund.failed",
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];

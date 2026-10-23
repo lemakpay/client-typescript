@@ -33,7 +33,7 @@ export declare function publicKeyMap(list: {
  */
 export declare function verifyWebhook(header: string, rawBody: Uint8Array | string, keys: WebhookKeys, now?: number): Promise<void>;
 /** Every event type the platform delivers. */
-export declare const EVENT_TYPES: readonly ["payment_intent.created", "payment_intent.requires_payment", "payment_intent.processing", "payment_intent.succeeded", "payment_intent.channel_settled", "payment_intent.failed", "payment_intent.expired", "payment_intent.canceled", "payment_intent.finalized", "payment_intent.reversed", "settlement.pending", "settlement.processing", "settlement.paid", "settlement.failed", "dispute.opened", "dispute.updated", "dispute.closed"];
+export declare const EVENT_TYPES: readonly ["payment_intent.created", "payment_intent.requires_payment", "payment_intent.processing", "payment_intent.succeeded", "payment_intent.channel_settled", "payment_intent.failed", "payment_intent.expired", "payment_intent.canceled", "payment_intent.finalized", "payment_intent.reversed", "settlement.pending", "settlement.processing", "settlement.paid", "settlement.failed", "dispute.opened", "dispute.updated", "dispute.closed", "refund.created", "refund.succeeded", "refund.failed"];
 export type EventType = (typeof EVENT_TYPES)[number];
 /** One delivered event. data is a notice, not the object: read the object before you act. */
 export interface WebhookEvent {
