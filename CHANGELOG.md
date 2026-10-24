@@ -5,6 +5,13 @@ All notable changes to this package are documented in this file. The format is b
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0.0, a minor version can
 change a method's shape; each such change is listed under **Changed** with how to migrate.
 
+## [0.7.1] - 2026-10-24
+
+### Changed
+
+- The error documentation states that a test mode key takes at most 5 requests a second. Over
+  the limit is 429 `rate_limit_exceeded`, which the client retries after `Retry-After`.
+
 ## [0.7.0] - 2026-10-23
 
 ### Added

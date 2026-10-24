@@ -1301,7 +1301,7 @@ export interface components {
         };
     };
     responses: {
-        /** @description An error. The status tells you the kind: 400 invalid request, 401 invalid API key, 402 payment could not be placed, 403 forbidden, 404 not found, 409 conflict, 413 body over 64 KiB, 422 idempotency key reused, 429 too many requests, 5xx server error. */
+        /** @description An error. The status tells you the kind: 400 invalid request, 401 invalid API key, 402 payment could not be placed, 403 forbidden, 404 not found, 409 conflict, 413 body over 64 KiB, 422 idempotency key reused, 429 too many requests, 5xx server error. A test mode key takes at most 5 requests a second. */
         ErrorResponse: {
             headers: {
                 /** @description A unique ID for this request. Every response includes it, and an error repeats it as `request_id`. Include it when you contact support. */
