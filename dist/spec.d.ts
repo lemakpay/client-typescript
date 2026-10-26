@@ -18,7 +18,7 @@ export interface paths {
         put?: never;
         /**
          * Create a payment intent
-         * @description Creates a payment intent. Without `payment_method`, the payment intent stays `created` and the response includes `checkout_url`, a hosted page where the payer chooses how to pay. With `payment_method`, the order is placed with a payment channel at once, and the payment intent is returned in `requires_payment` with a `next_action`. If no channel can take the payment, the request fails with 402 `no_channel_available`.
+         * @description Creates a payment intent. Without `payment_method`, the payment intent stays `created` and the response includes `checkout_url`, a hosted page where the payer chooses how to pay. With `payment_method`, the order is placed with a payment channel at once, and the payment intent is returned in `requires_payment` with a `next_action`. If no channel can take the payment, the request fails with 402 `no_channel_available` and no payment intent is created. Without `payment_method`, this means no payment method can take the amount in this currency.
          *
          *     To charge the payer in another currency, set `payment_currency`. You price the payment in `amount` and `currency`, which must be your settlement currency, and the payer pays the converted amount in `payment_currency`. The exchange rate is always locked when the payment intent is created, whatever your lock point setting, and it holds until the payment intent expires. `markup_bearer` chooses who pays the conversion markup.
          */
@@ -124,7 +124,7 @@ export interface paths {
         put?: never;
         /**
          * Advance a test timer
-         * @description Test mode only. Moves one timer of the payment intent to the current time: `expiry` sets `expires_at` and `release` sets `available_at`. The payment intent then expires, or its funds become available, shortly after, as in production. A production key returns 400 `test_mode_required`, and a timer that is not running, such as `release` before the payment intent is `channel_settled`, returns 409 `invalid_state_transition`.
+         * @description Test mode only. Moves one timer of the payment intent to the current time: `expiry` sets `expires_at` and `release` sets `available_at`. The payment intent then expires, or its funds become available, shortly after, as in production. A production key returns 400 `test_mode_required`, and a timer that is not running, such as `release` before the payment intent succeeds, returns 409 `invalid_state_transition`.
          */
         post: operations["advancePaymentIntent"];
         delete?: never;
@@ -314,7 +314,7 @@ export interface paths {
         put?: never;
         /**
          * Create a settlement
-         * @description Withdraws from your available balance now. Only accounts on the `manual` settlement schedule can use this endpoint. Accounts on a `daily` or `weekly` schedule are paid automatically. Without `amount` it pays every released payment; with it, any amount up to the available balance. Without `payout_method` it pays the default destination. In production this endpoint takes a withdrawal key (`wk_live_...`) only: a payments key is 403 `withdrawals_require_withdrawal_key`.
+         * @description Withdraws from your available balance. This is the only way a settlement starts: no schedule pays you. In production the settlement is `pending` until we review and approve it, and only then is it paid; in test mode a simulated destination is paid at once. Without `amount` it pays every released payment; with it, any amount up to the available balance. Without `payout_method` it pays the default destination; in production, with no default destination either, it is 400 `payout_method_required`. In production this endpoint takes a withdrawal key (`wk_live_...`) only: a payments key is 403 `withdrawals_require_withdrawal_key`.
          */
         post: operations["createSettlement"];
         delete?: never;
@@ -332,7 +332,7 @@ export interface paths {
         };
         /**
          * Retrieve a settlement
-         * @description Retrieves a settlement by its ID, with the payment intents it pays in `items`. The item amounts add up to the settlement amount.
+         * @description Retrieves a settlement by its ID, with the payment intents it pays in `items`. The item amounts add up to the settlement amount, less any balance adjustment the settlement also pays, which names no payment intent.
          */
         get: operations["settlement"];
         put?: never;
@@ -562,7 +562,7 @@ export interface components {
             currency: components["schemas"]["Currency"];
         };
         /**
-         * @description The status of the payment intent.
+         * @description The status of the payment intent. `succeeded` moves on to `channel_settled`, or to `failed` when the payment is reversed: the chain took back a crypto transfer, or the payment channel never paid a payment that succeeded. A reversal takes the amount back from your balance and emits `payment_intent.failed` and `payment_intent.reversed`.
          * @enum {string}
          */
         PaymentIntentStatus: "created" | "requires_payment" | "processing" | "succeeded" | "channel_settled" | "failed" | "expired" | "canceled";
@@ -828,7 +828,7 @@ export interface components {
              */
             mode: "live" | "test";
             status: components["schemas"]["SettlementStatus"];
-            /** @description The amount paid to you. It equals the total of the settled payments. */
+            /** @description The amount paid to you: the total of the settled payments, plus any balance adjustment the platform credited to you. */
             amount: components["schemas"]["Money"];
             /** @description The number of payment intents in this settlement. */
             payments?: number;
@@ -853,7 +853,7 @@ export interface components {
              */
             paid_at?: string;
             destination?: components["schemas"]["SettlementDestination"];
-            /** @description The payment intents this settlement pays. Present only when you retrieve one settlement. The item amounts add up to `amount`. */
+            /** @description The payment intents this settlement pays. Present only when you retrieve one settlement. The item amounts add up to `amount`, less any balance adjustment it pays. */
             items?: components["schemas"]["SettlementItem"][];
         };
         /** @description Where the settlement is paid. Absent when the settlement names no destination. */
@@ -1018,7 +1018,7 @@ export interface components {
             /** @description Whether a rate is locked. */
             locked: boolean;
             /**
-             * @description When the rate is locked: when the payment intent is created, when it is paid, or when the channel settles it. A payment intent with automatic conversion is always `on_create`.
+             * @description When the rate is locked: when the payment intent is created, or when it is paid. A crypto payment locks when the channel settles it. A payment intent with automatic conversion is always `on_create`.
              * @enum {string}
              */
             lock_point?: "on_create" | "on_paid" | "on_channel_settled";
@@ -1968,7 +1968,7 @@ export interface operations {
                     "application/json": components["schemas"]["MerchantRequest"];
                 };
             };
-            /** @description The amount is not positive (`invalid_amount`), below your minimum withdrawal (`amount_below_minimum`) or above your available balance (`balance_insufficient`). */
+            /** @description The amount is not positive (`invalid_amount`), below your minimum withdrawal (`amount_below_minimum`) or above your available balance (`balance_insufficient`). Or a production withdrawal names no `payout_method` and you have no default destination (`payout_method_required`). */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1977,7 +1977,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Your account is not on the `manual` settlement schedule (`settlement_schedule_not_manual`), or a production withdrawal used a payments key (`withdrawals_require_withdrawal_key`). */
+            /** @description Your payouts are on hold (`payouts_held`): the default destination changed in the last 24 hours, or we hold the account. Or a production withdrawal used a payments key (`withdrawals_require_withdrawal_key`). */
             403: {
                 headers: {
                     [name: string]: unknown;

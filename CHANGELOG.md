@@ -5,6 +5,20 @@ All notable changes to this package are documented in this file. The format is b
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0.0, a minor version can
 change a method's shape; each such change is listed under **Changed** with how to migrate.
 
+## [0.7.2] - 2026-10-26
+
+### Changed
+
+- The documentation says that a settlement is only ever started by `createSettlement`, and that a
+  production settlement is paid after review. A withdrawal while payouts are on hold is 403
+  `payouts_held`; a production withdrawal with no destination is 400 `payout_method_required`.
+- Creating a payment intent without a payment method is 402 `no_channel_available` when no
+  payment method can take the amount in that currency.
+- A `succeeded` payment intent the payment channel never paid can move to `failed`, with
+  `payment_intent.failed` and `payment_intent.reversed`. Settlement `amount` can include a balance
+  adjustment, so the item amounts can sum to less than `amount`.
+- The rate lock point `on_channel_settled` applies to crypto payments only.
+
 ## [0.7.1] - 2026-10-24
 
 ### Changed
